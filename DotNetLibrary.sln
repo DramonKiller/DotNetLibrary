@@ -7,6 +7,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Desktop", "Desktop", "{E013
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsFormsLibrary", "WindowsFormsLibrary\WindowsFormsLibrary.csproj", "{A15BEC06-A9B3-44C5-8D4C-96AAFACA8076}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Utilities", "Utilities\Utilities.csproj", "{8B49E7D3-E887-4D30-A868-46197A85701D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,6 +19,10 @@ Global
 		{A15BEC06-A9B3-44C5-8D4C-96AAFACA8076}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A15BEC06-A9B3-44C5-8D4C-96AAFACA8076}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A15BEC06-A9B3-44C5-8D4C-96AAFACA8076}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B49E7D3-E887-4D30-A868-46197A85701D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B49E7D3-E887-4D30-A868-46197A85701D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B49E7D3-E887-4D30-A868-46197A85701D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B49E7D3-E887-4D30-A868-46197A85701D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
