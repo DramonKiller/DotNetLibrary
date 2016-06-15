@@ -1,0 +1,418 @@
+--- EF
+
+LinQKit
+
+var filterPredicate = PredicateBuilder.True<T>();
+
+            if (filter.ResidentsIds != null && filter.ResidentsIds.Count > 0)
+            {
+                filterPredicate = filterPredicate.And(ra => filter.ResidentsIds.Contains(ra.Resident.Id));
+            }
+
+            if (filter.DateTimeFrom != null)
+            {
+                filterPredicate = filterPredicate.And(ra => ra.DateTime >= filter.DateTimeFrom);
+            }
+
+            if (filter.DateTimeTo != null)
+            {
+                filterPredicate = filterPredicate.And(ra => ra.DateTime <= filter.DateTimeTo);
+            }
+
+            return context.Set<T>().AsExpandable()
+                .Where(filterPredicate)
+                .Include(ra => ra.Resident).Include(ra => ra.Activity).Include(ra => ra.AbsentReason);
+                
+                
+--- PRocess
+
+       public static bool ProcesoYaExisteEnMaquina()
+        {
+            return Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName).Length > 1;
+        }
+
+        public static bool ProcesoYaExisteEnSesion()
+        {
+            return Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName)
+                .Any(p => p.SessionId == Process.GetCurrentProcess().SessionId && p.Id != Process.GetCurrentProcess().Id);
+        }
+--Settings 
+
+internal sealed partial class Settings {
+
+        public Settings() {
+            // // To add event handlers for saving and changing settings, uncomment the lines below:
+            //
+            // this.SettingChanging += this.SettingChangingEventHandler;
+            //
+            // this.SettingsSaving += this.SettingsSavingEventHandler;
+            //
+            this.SettingsLoaded += new System.Configuration.SettingsLoadedEventHandler(Settings_SettingsLoaded);
+        }
+
+        void Settings_SettingsLoaded(object sender, System.Configuration.SettingsLoadedEventArgs e)
+        {
+            //Las dlls no leen la configuracion de su fichero config, siempre cogen el valor por defecto, 
+            //asi que vamos a inicializar las propiedades leyendo del fichero
+            this.LeerSettings();
+
+
+
+
+
+//Las dlls no leen la configuracion de su fichero config, siempre cogen el valor por defecto, 
+        //asi que vamos a inicializar las propiedades leyendo del fichero
+        public static void LeerSettings<T>(this T settings) 
+            where T : System.Configuration.ApplicationSettingsBase
+        {
+            try
+            {
+                XmlDocument doc = new XmlDocument();
+                string configFile = Assembly.GetAssembly(typeof(T)).Location + ".config";
+                if (!System.IO.File.Exists(configFile))
+                    return;
+                doc.LoadXml(File.ReadAllText(configFile));
+
+                XmlNode config = doc.SelectSingleNode("configuration");
+                if (config != null)
+                {
+                    //Cadenas de conexion
+                    XmlNode conectionStrings = config.SelectSingleNode("connectionStrings");
+                    if (conectionStrings != null)
+                    {
+                        foreach (XmlNode node in conectionStrings.ChildNodes)
+                        {
+                            try
+                            {
+                                //                                                         _  
+                                //                                                       _|_|_   
+                                string[] tokens = node.Attributes["name"].InnerText.Split('.');
+                                //                                                        >.<
+                                settings[tokens[tokens.Length - 1]] = node.Attributes["connectionString"].InnerText;
+                            }
+                            catch { }
+                        }
+                    }
+
+                    //Propiedades
+                    XmlNode userSettings = config.SelectSingleNode("userSettings");
+                    if (userSettings != null)
+                    {
+                        foreach (XmlNode node in userSettings.FirstChild.ChildNodes)
+                        {
+                            try
+                            {
+                                PropertyInfo prop = settings.GetType().GetProperty(node.Attributes["name"].InnerText);
+                                object valor = null;
+
+                                switch (node.Attributes["serializeAs"].InnerText)
+                                {
+                                    case "String":
+                                        //Si es de tipo String, recuperamos el valor mediante el metodo Parse
+                                        MethodInfo mthParse = prop.PropertyType.GetMethod("Parse", new Type[] { typeof(string) });
+                                        if (mthParse != null)
+                                            valor = mthParse.Invoke(prop.PropertyType, new object[] { node.FirstChild.InnerText });
+                                        else
+                                            valor = node.FirstChild.InnerText;
+                                        break;
+                                    case "Xml":
+                                        //Si es de tipo xml, recuperamos el valor deserializando el xml
+                                        System.Xml.Serialization.XmlSerializer serializador = new System.Xml.Serialization.XmlSerializer(prop.PropertyType);
+                                        StringReader sr = new StringReader(node.FirstChild.InnerXml);
+                                        valor = serializador.Deserialize(sr);
+                                        break;
+                                }
+
+                                settings[node.Attributes["name"].InnerText] = valor;
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+        }
+        
+--- Utils
+
+
+public static void CambiarFechaSistema(DateTime fecha)
+        {
+            Microsoft.VisualBasic.DateAndTime.Today = fecha.Date;
+            Microsoft.VisualBasic.DateAndTime.TimeOfDay = new DateTime(fecha.Ticks);
+        }
+-- win froms
+
+
+        private const int WM_SETREDRAW = 0x000B;
+
+        public static void Suspend(this Control control)
+        {
+            Message msgSuspendUpdate = Message.Create(control.Handle, WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero);
+            NativeWindow window = NativeWindow.FromHandle(control.Handle);
+            window.DefWndProc(ref msgSuspendUpdate);
+        }
+
+        public static void Resume(this Control control)
+        {
+            //Create a C "true" boolean as an IntPtr
+            IntPtr wparam = new IntPtr(1);
+            Message msgResumeUpdate = Message.Create(control.Handle, WM_SETREDRAW, wparam, IntPtr.Zero);
+            NativeWindow window = NativeWindow.FromHandle(control.Handle);
+            window.DefWndProc(ref msgResumeUpdate);
+            control.Refresh();//Pintamos el control
+        }        
+
+
+ public static bool IsInDesingMode(this Control control)
+        {
+            return control.Site != null && control.Site.DesignMode; 
+        }
+
+---- Tab2form
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Drawing;
+using System.Windows.Forms;
+using Infragistics.Win.UltraWinTabControl;
+using Infragistics.Win;
+
+
+namespace InfragisticsEx
+{
+    public class Tab2FormControl : UltraTabControl
+    {
+        protected List<TabForm> listaForms;
+
+        public Tab2FormControl() : base()
+        {
+            listaForms = new List<TabForm>();
+        }
+
+        public UltraTab[] TabsInForms
+        {
+            get { return listaForms.Select(f => f.Tab).ToArray(); }
+        }
+
+        public bool IsTabInForm(string key)
+        {
+            return listaForms.Any(f => f.Tab.Key == key);
+        }
+
+        public bool IsTabActiveOrInForm(string key)
+        {
+            return (this.ActiveTab != null && this.ActiveTab.Key == key) || IsTabInForm(key);
+        }
+
+        public void CloseAllForms()
+        {
+            foreach (Form f in listaForms)
+                if (!f.IsDisposed)
+                    f.Close();
+        }
+
+        //Se borra una pestaña
+        protected override void OnControlRemoved(ControlEventArgs e)
+        {
+            base.OnControlRemoved(e);
+            if (e.Control is UltraTabPageControl)
+            {
+                foreach (TabForm f in listaForms.ToArray())
+                {
+                    if (f.Tab == (e.Control as UltraTabPageControl).Tab)
+                    {
+                        listaForms.Remove(f);
+                        f.Close();
+                        f.Dispose();
+                    }
+                }
+            }
+        }
+
+        protected override void OnMouseDoubleClick(MouseEventArgs e)
+        {
+            base.OnMouseDoubleClick(e);
+            if (e.Button != MouseButtons.Left)
+                return;
+            //if (this.Tabs.VisibleTabsCount == 1)
+            //    return;
+
+            UltraTab tab = null;
+            Infragistics.Win.UIElement element = this.UIElement.ElementFromPoint(new Point(e.X, e.Y));
+
+            if (element == null)
+                return;
+            tab = element.GetContext(typeof(UltraTab)) as UltraTab;
+
+            if (tab == null)
+                return;
+
+            Control[] tabControls = new Control[tab.TabPage.Controls.Count];
+            tab.TabPage.Controls.CopyTo(tabControls, 0);
+
+            TabForm f = new TabForm(this, tab);
+            f.Text = tab.TabControl.FindForm().Text + " - " + tab.Text;
+            f.ClientSize = tab.TabPage.Size;
+
+            foreach (Control c in tabControls)
+            {
+                tab.TabPage.Controls.Remove(c);
+                f.Controls.Add(c);
+            }
+            tab.Visible = false;
+            listaForms.Add(f);
+            f.Show();
+            if (TabToFormCreated != null)
+                TabToFormCreated.Invoke(this, new TabToFormCreatedEventArgs(f)); 
+        }
+
+        public delegate void TabToFormCreatedHandler(object sender, TabToFormCreatedEventArgs e);
+
+        public event TabToFormCreatedHandler TabToFormCreated;
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            //Cerramos los formularios abiertos
+            TabForm[] forms = listaForms.ToArray();
+            foreach (TabForm f in forms)
+            {
+                if (!f.IsDisposed)
+                    f.Close();
+            }
+            listaForms.Clear();
+        }
+
+        public class TabForm : Form
+        {
+            private UltraTab tab;
+            private Tab2FormControl tabcontrol;
+
+            public UltraTab Tab
+            {
+                get { return tab; }
+            }
+
+            public TabForm(Tab2FormControl tabcontrol, UltraTab tab)
+                : base()
+            {
+                this.tab = tab;
+                this.tabcontrol = tabcontrol;
+            }
+
+            protected override void OnFormClosing(FormClosingEventArgs e)
+            {
+                base.OnFormClosing(e);
+                if (!e.Cancel)
+                {
+                    if (!tabcontrol.IsDisposed && tab != null)
+                    {
+                        Control[] formControls = new Control[this.Controls.Count];
+                        this.Controls.CopyTo(formControls, 0);
+                        this.Visible = false;
+                        if (this.WindowState == FormWindowState.Maximized)
+                            this.WindowState = FormWindowState.Normal;
+                        this.ClientSize = tab.TabPage.Size;//redimensionamos los controles
+                        foreach (Control c in formControls)
+                        {
+                            this.Controls.Remove(c);
+                            tab.TabPage.Controls.Add(c);
+                        }
+
+                        tab.Visible = true;
+
+                        tabcontrol.ActiveTab = tab;
+                        tabcontrol.SelectedTab = tab;
+                    }
+
+                    tabcontrol.listaForms.Remove(this);
+                }
+            }
+        }
+
+        public class TabToFormCreatedEventArgs : EventArgs
+        {
+            private TabForm _form;
+
+            public TabToFormCreatedEventArgs(TabForm form)
+                : base()
+            {
+                _form = form;
+            }
+
+            public TabForm Form
+            {
+                get { return _form; }
+            }
+        }
+        
+    }
+}
+
+--- WPF
+ //https://msdn.microsoft.com/en-us/library/vstudio/ee230087(v=vs.100).aspx
+        private void DisableWPFTabletSupport()
+        {
+            LogBD.WriteMsg("Tablet.TabletDevices.Count: " + Tablet.TabletDevices.Count);
+            var devices = Tablet.TabletDevices;
+
+            if (devices.Count > 0)
+            {
+                var inputManagerType = typeof(InputManager);
+
+                var stylusLogic = inputManagerType.InvokeMember("StylusLogic", BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.NonPublic, null, InputManager.Current, null);
+                
+                if (stylusLogic != null)
+                {
+                    //while (devices.Count > 0)
+                    //{
+                    //    System.Windows.MessageBox.Show("InvokeMember: OnTabletRemoved");
+                    //    stylusLogicType.InvokeMember("OnTabletRemoved", BindingFlags.InvokeMethod | BindingFlags.Instance | BindingFlags.NonPublic, null, stylusLogic, new object[] { (uint)0 });
+                    //}
+                    
+                    var stylusLogicType = stylusLogic.GetType();
+                    for (int i = devices.Count; i > 0; i--)
+                    {
+                        stylusLogicType.InvokeMember("OnTabletRemoved", BindingFlags.InvokeMethod | BindingFlags.Instance | BindingFlags.NonPublic, null, stylusLogic, new object[] { (uint)0 });
+                    }
+
+                    if (devices.Count > 0)
+                    {
+                        LogBD.WriteMsg("OnTabletRemoved no ha funcionado!");
+                        for (int i = devices.Count; i > 0; i--)
+                        {
+                            typeof(TabletDeviceCollection).InvokeMember("HandleTabletRemoved", BindingFlags.InvokeMethod | BindingFlags.Instance | BindingFlags.NonPublic, null, Tablet.TabletDevices, new object[] { (uint)0 });
+                        }
+
+                        if (devices.Count > 0)
+                        {
+                            LogBD.WriteMsg("HandleTabletRemoved no ha funcionado!");
+                            //Lo primero no funciona... Pasamos a deshabilitarlo a lo bruto...
+                            //http://reflector.webtropy.com/default.aspx/DotNET/DotNET/8@0/untmp/WIN_WINDOWS/lh_tools_devdiv_wpf/Windows/wcp/Core/System/Windows/Input/Stylus/StylusLogic@cs/5/StylusLogic@cs
+                            stylusLogicType.GetField("_inputEnabled", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).SetValue(stylusLogic, false);
+
+                            LogBD.WriteMsg("_inputEnabled = " + stylusLogicType.GetField("_inputEnabled", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).GetValue(stylusLogic));
+                        }
+                    }
+                }
+            }
+
+        }
+        
+ public static class DispatcherEx
+    {
+        public static void InvokeOrExecute(this Dispatcher dispatcher, Action action)
+        {
+            if (dispatcher.CheckAccess())
+                action();
+            else
+                dispatcher.Invoke(DispatcherPriority.Send, action);
+        }
+    }
+
+
